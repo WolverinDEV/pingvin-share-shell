@@ -15,6 +15,7 @@ log4rs = "1.3.0"
 msgbox = "0.7.0"
 notify = "6.1.1"
 obfstr = "0.4.3"
+pingvin-share-sparse-package = { version = "0.1.0", path = "sparse" }
 serde = { version = "1.0.209", features = ["derive"] }
 serde_ini = "0.2.0"
 tempfile = "3.12.0"
@@ -37,4 +38,3 @@ version = "0.58"
 
 [build-dependencies]
 winresource = "0.1.17"
-anyhow = "1.0.86"

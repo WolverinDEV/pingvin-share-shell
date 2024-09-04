@@ -1,0 +1,7 @@
+[package]
+name = "pingvin-share-sparse-package"
+version = "0.1.0"
+edition = "2021"
+
+[build-dependencies]
+anyhow = "1.0.86"

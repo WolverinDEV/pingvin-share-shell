@@ -1542,6 +1542,7 @@ dependencies = [
  "msgbox",
  "notify",
  "obfstr",
+ "pingvin-share-sparse-package",
  "serde",
  "serde_ini",
  "tempfile",
@@ -1549,6 +1550,13 @@ dependencies = [
  "windows-core 0.58.0",
  "winreg",
  "winresource",
+]
+
+[[package]]
+name = "pingvin-share-sparse-package"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
 ]
 
 [[package]]

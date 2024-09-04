@@ -1,6 +1,7 @@
 use std::{io::Write, os::windows::ffi::OsStrExt};
 
 use anyhow::Context;
+use pingvin_share_sparse_package as sparse_package;
 use windows::{
     ApplicationModel::Package,
     Foundation::Uri,
@@ -9,9 +10,6 @@ use windows::{
 use windows_core::HSTRING;
 
 use crate::util::get_dll_path;
-
-const SPARSE_PACKAGE_ID: &str = "PingvinShare";
-const SPARSE_PACKAGE: &[u8] = include_bytes!(env!("SPARSE_PACKAGE_PATH"));
 
 fn find_package_by_name(name: &str) -> anyhow::Result<Option<Package>> {
     let package_manager = PackageManager::new()?;
@@ -25,7 +23,7 @@ fn find_package_by_name(name: &str) -> anyhow::Result<Option<Package>> {
 }
 
 pub fn install() -> anyhow::Result<()> {
-    if find_package_by_name(SPARSE_PACKAGE_ID)?.is_some() {
+    if find_package_by_name(sparse_package::PACKAGE_ID)?.is_some() {
         log::warn!("sparse package already installed. Uninstalling old version.");
         let _ = self::uninstall().context("uninstall old package")?;
     }
@@ -36,7 +34,7 @@ pub fn install() -> anyhow::Result<()> {
             .suffix(".msix")
             .tempfile()
             .context("create temp package file")?;
-        file.write_all(SPARSE_PACKAGE)
+        file.write_all(sparse_package::PACKAGE)
             .context("write package contents")?;
         file.into_temp_path()
     };
@@ -82,7 +80,7 @@ pub fn install() -> anyhow::Result<()> {
 
 pub fn uninstall() -> anyhow::Result<()> {
     let package_manager = PackageManager::new()?;
-    let Some(package) = find_package_by_name(&SPARSE_PACKAGE_ID)? else {
+    let Some(package) = find_package_by_name(&sparse_package::PACKAGE_ID)? else {
         return Ok(());
     };
 
