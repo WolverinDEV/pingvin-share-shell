@@ -1,0 +1,3 @@
+[workspace]
+members = ["windows-shell", "pingvin-share"]
+resolver = "2"

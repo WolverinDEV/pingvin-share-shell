@@ -1,0 +1,40 @@
+[package]
+name = "pingvin-share-shell"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+anyhow = "1.0.86"
+debounce = "0.2.2"
+env_logger = "0.11.5"
+log = "0.4.22"
+log4rs = "1.3.0"
+msgbox = "0.7.0"
+notify = "6.1.1"
+obfstr = "0.4.3"
+serde = { version = "1.0.209", features = ["derive"] }
+serde_ini = "0.2.0"
+tempfile = "3.12.0"
+windows-core = "0.58.0"
+winreg = "0.52.0"
+
+[dependencies.windows]
+features = [
+    "implement",
+    "ApplicationModel",
+    "Win32_System_Com",
+    "Win32_System_SystemServices",
+    "Win32_System_Console",
+    "Win32_System_LibraryLoader",
+    "Win32_UI_Shell",
+    "Management_Deployment",
+    "Foundation_Collections",
+]
+version = "0.58"
+
+[build-dependencies]
+winresource = "0.1.17"
+anyhow = "1.0.86"
