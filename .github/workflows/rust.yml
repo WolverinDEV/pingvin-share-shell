@@ -1,0 +1,61 @@
+name: Rust
+
+on:
+  push:
+    branches: ["master"]
+  pull_request:
+    branches: ["master"]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust-check:
+    name: Rust Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - name: Check fmt
+        run: rustup component add rustfmt && cargo fmt --check
+
+  build-shell-extension:
+    name: Shell extension
+    runs-on: windows-latest
+    needs: [rust-check]
+
+    steps:
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+      - name: Build Shell extension
+        run: cargo build --verbose --release --lib
+        env:
+          RUSTFLAGS: -Ctarget-feature=+crt-static
+      - name: Build CLI tool
+        run: cargo build --verbose --release --bin pingvin-share
+        env:
+          RUSTFLAGS: -Ctarget-feature=+crt-static
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries
+          path: |
+            target/release/pingvin_share_shell.dll
+            target/release/pingvin_share_shell.pdb
+            target/release/pingvin-share.exe
+            target/release/pingvin_share.pdb

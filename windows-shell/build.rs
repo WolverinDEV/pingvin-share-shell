@@ -18,7 +18,7 @@ fn build_sparse_package() -> anyhow::Result<PathBuf> {
         "/p",
         &package_path.display().to_string(),
         "/nv",
-        "/o"
+        "/o",
     ]);
 
     let exit = command
