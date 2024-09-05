@@ -1,4 +1,3 @@
 [build]
-# reqwest crashes for i686-pc-windows-msvc
 target = "i686-pc-windows-msvc"
 rustflags = ["-C", "target-feature=+crt-static"]

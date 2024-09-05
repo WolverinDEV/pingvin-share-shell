@@ -89,6 +89,7 @@ fn validate_server_url(server_url: &str) -> anyhow::Result<(String, String)> {
         value: String,
     }
 
+    let parsed_url = Url::parse(server_url).context("url")?;
     let response = ureq::get(&format!("{}configs", server_url)).call()?;
     if response.status() != 200 {
         anyhow::bail!("HTTP request failed with status {}", response.status());
@@ -105,6 +106,37 @@ fn validate_server_url(server_url: &str) -> anyhow::Result<(String, String)> {
         .find(|entry| entry.key == "general.appUrl")
         .context("missing app url config entry")?;
 
+    let allow_unauthenticated = response
+        .iter()
+        .find(|entry| entry.key == "share.allowUnauthenticatedShares")
+        .context("missing share.allowUnauthenticatedShares config entry")?
+        .value
+        == "true";
+
+    if !allow_unauthenticated || !parsed_url.username().is_empty() {
+        println!("Auth");
+        if parsed_url.username().is_empty() || parsed_url.password().is_none() {
+            anyhow::bail!("Server does not allow unauthenticated shares.");
+        }
+
+        let response = ureq::post(&format!("{}auth/signIn", server_url)).send_json(ureq::json!({
+            "username": parsed_url.username(),
+            "password": parsed_url.password().unwrap(),
+        }));
+
+        match response {
+            Ok(_response) => { /* login success */ }
+            Err(ureq::Error::Status(status, _response)) => {
+                if status == 401 {
+                    anyhow::bail!("Invalid user credentials");
+                }
+
+                anyhow::bail!("Invalid login status code {}", status);
+            }
+            Err(error) => anyhow::bail!("{}", error),
+        }
+    }
+
     Ok((app_name.value.to_string(), app_url.value.to_string()))
 }
 
@@ -115,7 +147,7 @@ mod test {
     #[test]
     fn test_validate() {
         let result =
-            validate_server_url("https://WolverinDEV:thisisnoitmypassword@sendy.did.science/api/");
+            validate_server_url("https://WolverinDEV:notmypassword@sendy.did.science/api/");
         println!("{:?}", result);
         assert!(result.is_ok());
     }
