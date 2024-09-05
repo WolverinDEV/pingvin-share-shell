@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<!--
+This file was created by NSISDialogDesigner 1.6.0.0
+https://coolsoft.altervista.org/nsisdialogdesigner
+Do not edit manually!
+-->
+<Dialog Name="PingvinConfig" Title="Configuration" Subtitle="Setup the connection to your Pingvin server.">
+  <CreateFunctionCustomScript>Call PingvinConfig_OnCreate</CreateFunctionCustomScript>
+  <GroupBox Name="GroupBox2" Location="12, 147" Size="426, 69" Text="Context Menu Configuration" TabIndex="0">
+    <TextBox Name="TextCustomIcon" Location="225, 43" Size="195, 20" TabIndex="0" />
+    <CheckBox Name="CheckCustomIcon" Location="225, 19" Size="193, 24" Text="Custom icon" TabIndex="1" onClick="CheckCustomIcon_OnClick" />
+    <CheckBox Name="CheckCustomDisplayName" Location="6, 19" Size="193, 24" Text="Custom display name" TabIndex="2" onClick="CheckCustomDisplayName_OnClick" />
+    <TextBox Name="TextCustomDisplayName" Location="6, 43" Size="195, 20" TabIndex="3" />
+  </GroupBox>
+  <TextBox Name="TextServerUrl" Location="18, 35" Size="414, 20" TabIndex="1" />
+  <Label Name="LabelServerURL" Location="18, 17" Size="414, 15" Text="Server URL (e.g. https://pingvin-share.dev.eliasschneider.com/api/)" TabIndex="2" />
+  <GroupBox Name="GroupBox1" Location="12, 1" Size="426, 140" Text="Server Configuration" TabIndex="3">
+    <CheckBox Name="CheckboxAuth" Location="8, 60" Size="242, 24" Text="Enable Authentication" TabIndex="0" onClick="CheckboxAuth_OnClick" />
+    <Password Name="TextPassword" Location="225, 109" Size="195, 20" TabIndex="1" />
+    <TextBox Name="TextUsername" Location="6, 109" Size="195, 20" TabIndex="2" />
+    <Label Name="LabelPassword" Location="225, 89" Size="100, 17" Text="Password" TabIndex="3" />
+    <Label Name="LabelUsername" Location="6, 89" Size="100, 17" Text="Username" TabIndex="4" />
+  </GroupBox>
+</Dialog>

@@ -2,3 +2,4 @@
 *-log.txt
 *.yml
 !/.github/**
+*.exe

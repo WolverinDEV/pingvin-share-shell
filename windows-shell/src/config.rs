@@ -15,6 +15,12 @@ use crate::util;
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
+struct ConfigRoot {
+    default: ShellConfig,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct ShellConfig {
     /// Path to the pingvin cli tool
     pub pingvin_exe: Option<PathBuf>,
@@ -73,8 +79,8 @@ fn config_watcher_worker(config_path: PathBuf) -> anyhow::Result<()> {
 
 pub fn load_config_internal(path: &Path) -> anyhow::Result<()> {
     let reader = File::open(path)?;
-    let config = serde_ini::from_read(reader).context("config parse")?;
-    *CONFIG_INSTANCE.write().unwrap() = config;
+    let config: ConfigRoot = serde_ini::from_read(reader).context("config parse")?;
+    *CONFIG_INSTANCE.write().unwrap() = config.default;
     Ok(())
 }
 

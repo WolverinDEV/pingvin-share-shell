@@ -1,8 +1,14 @@
+#![windows_subsystem = "windows"]
+
 use api::{ExpireDuration, PingvinApi};
 use clap::Parser;
+use msgbox::IconType;
+use obfstr::obfwide;
 use output::{create_log_upload_event_handler, create_win_upload_event_handler};
 use reqwest::Url;
 use std::{path::PathBuf, process::ExitCode};
+use windows::Win32::UI::Shell::SetCurrentProcessExplicitAppUserModelID;
+use windows_core::PCWSTR;
 
 mod api;
 mod logger;
@@ -53,6 +59,35 @@ async fn main() -> anyhow::Result<ExitCode> {
         }
     };
 
+    if args.console {
+        unsafe { logger::create_console()? };
+    }
+
+    unsafe {
+        SetCurrentProcessExplicitAppUserModelID(PCWSTR::from_raw(
+            obfwide!("dev.wolveringer.pingvin-share-shell\0").as_ptr(),
+        ))?;
+    }
+    let result = execute_upload(&args).await;
+    if let Err(err) = result {
+        if args.console {
+            return Err(err);
+        }
+
+        let _ = msgbox::create(
+            "Pingvin Share",
+            &format!("Failed to upload files:\n{:#}", err),
+            IconType::Error,
+        );
+
+        /* Return success, so the context menu handler does not show an additional popup */
+        return Ok(ExitCode::SUCCESS);
+    }
+
+    Ok(ExitCode::SUCCESS)
+}
+
+async fn execute_upload(args: &Args) -> anyhow::Result<()> {
     let mut server_api = PingvinApi::new(args.server_url.clone())?;
     let server_config = server_api.public_config().await?;
 
@@ -97,5 +132,5 @@ async fn main() -> anyhow::Result<ExitCode> {
     }
 
     let _ = share_builder.upload().await?;
-    Ok(ExitCode::SUCCESS)
+    Ok(())
 }

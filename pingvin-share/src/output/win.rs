@@ -163,11 +163,15 @@ pub fn create_win_upload_event_handler(
         .to_string();
 
     let notifier = Arc::new(
-        ToastNotificationManager::CreateToastNotifierWithId(&HSTRING::from(
-            // TODO: Actual app id :)
+        Err(())
+            .or_else(|_| ToastNotificationManager::CreateToastNotifier())
+            .or_else(|_| {
+                ToastNotificationManager::CreateToastNotifierWithId(
+                &HSTRING::from(
             "{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe",
         ))
-        .context("notifier")?,
+            })
+            .context("notifier")?,
     );
     let mut progress_notification = ProgressNotification::new(notifier.clone(), "upload-progress")?;
     progress_notification.set_status("Initializing upload...")?;

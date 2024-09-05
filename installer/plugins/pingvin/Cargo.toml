@@ -1,0 +1,18 @@
+[package]
+name = "nsis-pingvin"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+anyhow = "1.0.86"
+isahc = { version = "1.7.2", features = ["json"] }
+nsis-plugin-api = { git = "https://github.com/tauri-apps/nsis-tauri-utils" }
+serde = { version = "1.0.209", features = ["derive"] }
+serde_json = "1.0.128"
+# Using ureq as reqwest and isahc seem to crash for x86
+ureq = { version = "2.10.1", features = ["json"] }
+url = "2.5.2"
+windows-sys = "0.59.0"

@@ -3,6 +3,12 @@ use std::env;
 use anyhow::Context;
 use log::LevelFilter;
 use log4rs::{config::Root, Config};
+use windows::Win32::System::Console::AllocConsole;
+
+pub unsafe fn create_console() -> anyhow::Result<()> {
+    AllocConsole()?;
+    Ok(())
+}
 
 pub fn init() -> anyhow::Result<()> {
     let config_path = env::current_exe()?

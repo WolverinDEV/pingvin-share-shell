@@ -15,15 +15,69 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Install toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
           toolchain: nightly
-          override: true
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Check fmt
         run: rustup component add rustfmt && cargo fmt --check
+
+  build-nsis-plugin:
+    name: NSIS plugin
+    runs-on: windows-latest
+    needs: [rust-check]
+    steps:
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          targets: i686-pc-windows-msvc
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+          workspaces: installer/plugins/pingvin -> target
+      - name: Build NSIS plugin
+        working-directory: installer/plugins/pingvin
+        run: cargo build --verbose --release
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nsis-plugin
+          path: |
+            installer/plugins/pingvin/target/i686-pc-windows-msvc/release/nsis_pingvin.dll
+
+  build-pingvin:
+    name: Pingvin
+    runs-on: windows-latest
+    needs: [rust-check]
+
+    steps:
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+      - name: Build CLI tool
+        run: cargo build --verbose --release --bin pingvin-share
+        env:
+          RUSTFLAGS: -Ctarget-feature=+crt-static
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pingvin
+          path: |
+            target/release/pingvin-share.exe
+            target/release/pingvin_share.pdb
 
   build-shell-extension:
     name: Shell extension
@@ -32,11 +86,10 @@ jobs:
 
     steps:
       - name: Install toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
-          override: true
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - uses: Swatinem/rust-cache@v2
@@ -46,16 +99,59 @@ jobs:
         run: cargo build --verbose --release --lib
         env:
           RUSTFLAGS: -Ctarget-feature=+crt-static
-      - name: Build CLI tool
-        run: cargo build --verbose --release --bin pingvin-share
-        env:
-          RUSTFLAGS: -Ctarget-feature=+crt-static
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: binaries
+          name: shell-extension
           path: |
             target/release/pingvin_share_shell.dll
             target/release/pingvin_share_shell.pdb
-            target/release/pingvin-share.exe
-            target/release/pingvin_share.pdb
+    
+  create-installer:
+    runs-on: windows-latest
+    name: Create Installer
+    needs: [build-pingvin, build-shell-extension, build-nsis-plugin]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Download a NSNS plugin
+        uses: actions/download-artifact@v4
+        with:
+          name: nsis-plugin
+          path: installer/plugins/
+      - name: Download Shell extension
+        uses: actions/download-artifact@v4
+        with:
+          name: shell-extension
+          path: installer/files/
+      - name: Download Pingvin
+        uses: actions/download-artifact@v4
+        with:
+          name: pingvin
+          path: installer/files/
+      - name: List files
+        shell: bash
+        run: |
+          ls -lah installer/plugins/
+          ls -lah installer/files/
+      - name: Install NSIS
+        run: |
+          iwr -useb get.scoop.sh -outfile 'install.ps1'
+          .\install.ps1 -RunAsAdmin
+          scoop update
+          scoop bucket add extras
+          scoop install nsis
+      - name: Print NSIS version
+        run: makensis -VERSION
+      - name: Create installer
+        run: |
+          cd installer
+          makensis /DPINGVIN_EXE_PATH="$(pwd)\files\pingvin-share.exe" /DPINGVIN_SHELL_EXTENSION_PATH="$(pwd)\files\pingvin_share_shell.dll" installer.nsi
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer
+          path: |
+            installer/Pingvin Shell Setup.exe
