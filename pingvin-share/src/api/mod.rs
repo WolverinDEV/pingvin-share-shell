@@ -326,7 +326,7 @@ impl<'a> ShareBuilder<'a> {
             .to_string_lossy();
 
         let chunk_count = {
-            let mut chunks = (file_length / chunk_size).min(1);
+            let mut chunks = (file_length / chunk_size).max(1);
             if chunks * chunk_size < file_length {
                 chunks += 1;
             }
