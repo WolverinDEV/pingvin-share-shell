@@ -166,6 +166,11 @@ pub fn create_win_upload_event_handler(
         Err(())
             .or_else(|_| ToastNotificationManager::CreateToastNotifier())
             .or_else(|_| {
+                ToastNotificationManager::CreateToastNotifierWithId(&HSTRING::from(
+                    "dev.wolveringer.pingvin-share-shell",
+                ))
+            })
+            .or_else(|_| {
                 ToastNotificationManager::CreateToastNotifierWithId(
                 &HSTRING::from(
             "{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe",

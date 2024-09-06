@@ -11,7 +11,7 @@ SetCompressor lzma
 ##!define PINGVIN_SHELL_EXTENSION_PATH      ## Path of the pingvin shell extension dll
 
 !define PRODUCT_NAME "Pingvin Shell Extension"
-!define BUNDLE_ID "dev.wolveringer.pingvin-shell"
+!define PRODUCT_APP_ID "dev.wolveringer.pingvin-share-shell"
 
 ; Check for all required variables
 !ifndef PINGVIN_EXE_PATH
@@ -87,6 +87,7 @@ Section "Shell Extension" SectionShellExtension
     ; Install files
     SetOutPath "$INSTDIR\"
     File "resources\icon.ico"
+    File "resources\icon.png"
     File /oname=pingvin-share.exe "${PINGVIN_EXE_PATH}"
     File /oname=pingvin_share_shell.dll "${PINGVIN_SHELL_EXTENSION_PATH}"
 
@@ -104,8 +105,16 @@ Section "Shell Extension" SectionShellExtension
 
     ExecWait '$SYSDIR\regsvr32.exe /s "$INSTDIR\pingvin_share_shell.dll"'
 
-    WriteRegStr HKLM "Software\Classes\AppUserModelId\dev.wolveringer.pingvin-share-shell" "DisplayName" "Pingvin Share"
-    WriteRegStr HKLM "Software\Classes\AppUserModelId\dev.wolveringer.pingvin-share-shell" "IconUri" "$INSTDIR\icon.ico"
+    WriteRegStr HKLM "Software\Classes\AppUserModelId\${PRODUCT_APP_ID}" "DisplayName" "Pingvin Share"
+    WriteRegStr HKLM "Software\Classes\AppUserModelId\${PRODUCT_APP_ID}" "IconUri" "$INSTDIR\icon.png"
+    WriteRegStr HKLM "Software\Classes\AppUserModelId\${PRODUCT_APP_ID}" "IconBackgroundColor" "FFDDDDDD"
+    
+    CreateShortcut "$SMPROGRAMS\${PRODUCT_NAME}.lnk" "$INSTDIR\pingvin-share.exe" "" "$INSTDIR\icon.png"
+    ApplicationID::Set "$SMPROGRAMS\${PRODUCT_NAME}.lnk" "${PRODUCT_APP_ID}"
+    Pop $0
+    ${IF} $0 = -1
+        messagebox MB_OK "Failed to set app id for Pingvin shortcut"
+    ${ENDIF}
 SectionEnd
 
 Section -FinishSection
@@ -123,14 +132,16 @@ Section "un.Pingvin Shell Extension" Uninstall
     DeleteRegKey HKLM "SOFTWARE\${PRODUCT_NAME}\InstallDir"
     DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
     DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
-    DeleteRegKey HKLM "Software\Classes\AppUserModelId\dev.wolveringer.pingvin-share-shell"
+    DeleteRegKey HKLM "Software\Classes\AppUserModelId\${PRODUCT_APP_ID}"
 
     ExecWait '$SYSDIR\regsvr32.exe /s "$INSTDIR\pingvin_share_shell.dll" /u'
 
+    Delete "$SMPROGRAMS\${PRODUCT_NAME}.lnk"
     Delete "$INSTDIR\Uninstall.exe"
     Delete "$INSTDIR\pingvin-share.exe"
     Delete "$INSTDIR\pingvin_share_shell.dll"
     Delete "$INSTDIR\icon.ico"
+    Delete "$INSTDIR\icon.png"
 SectionEnd
 
 Section /o "un.Config files" UninstallUserDataConfigs
