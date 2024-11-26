@@ -7,15 +7,15 @@ SetCompress force
 SetCompressor lzma
 ; SetCompress off
 
-##!define PINGVIN_EXE_PATH                  ## Path of the pingvin executable to use
+##!define PINGVIN_CLI_EXE_PATH              ## Path of the pingvin executable to use
 ##!define PINGVIN_SHELL_EXTENSION_PATH      ## Path of the pingvin shell extension dll
 
 !define PRODUCT_NAME "Pingvin Shell Extension"
 !define PRODUCT_APP_ID "dev.wolveringer.pingvin-share-shell"
 
 ; Check for all required variables
-!ifndef PINGVIN_EXE_PATH
-  !error "PINGVIN_EXE_PATH must be specified"
+!ifndef PINGVIN_CLI_EXE_PATH
+  !error "PINGVIN_CLI_EXE_PATH must be specified"
 !endif
 
 !ifndef PINGVIN_SHELL_EXTENSION_PATH
@@ -92,7 +92,7 @@ Section "Shell Extension" SectionShellExtension
     File /oname=pingvin_share_shell.dll "${PINGVIN_SHELL_EXTENSION_PATH}"
 
     ; Create configuration
-    WriteINIStr $INSTDIR\config_shell.ini "default" "pingvin-args" "--output,windows-notification,-s,$ConfigServerUrlFinal"
+    WriteINIStr $INSTDIR\config_shell.ini "default" "pingvin-args" "--outputwindows-notification,-s,$ConfigServerUrlFinal"
     WriteINIStr $INSTDIR\config_shell.ini "default" "pingvin-exe" "$INSTDIR\pingvin-cli.exe"
 
     ${IF} $ConfigCustomDisplayName != ""
