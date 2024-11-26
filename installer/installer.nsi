@@ -88,12 +88,12 @@ Section "Shell Extension" SectionShellExtension
     SetOutPath "$INSTDIR\"
     File "resources\icon.ico"
     File "resources\icon.png"
-    File /oname=pingvin-share.exe "${PINGVIN_EXE_PATH}"
+    File /oname=pingvin-cli.exe "${PINGVIN_CLI_EXE_PATH}"
     File /oname=pingvin_share_shell.dll "${PINGVIN_SHELL_EXTENSION_PATH}"
 
     ; Create configuration
-    WriteINIStr $INSTDIR\config_shell.ini "default" "pingvin-args" "-s,$ConfigServerUrlFinal"
-    WriteINIStr $INSTDIR\config_shell.ini "default" "pingvin-exe" "$INSTDIR\pingvin-share.exe"
+    WriteINIStr $INSTDIR\config_shell.ini "default" "pingvin-args" "--output,windows-notification,-s,$ConfigServerUrlFinal"
+    WriteINIStr $INSTDIR\config_shell.ini "default" "pingvin-exe" "$INSTDIR\pingvin-cli.exe"
 
     ${IF} $ConfigCustomDisplayName != ""
         WriteINIStr $INSTDIR\config_shell.ini "default" "menu-title" "$ConfigCustomDisplayName"
@@ -109,7 +109,7 @@ Section "Shell Extension" SectionShellExtension
     WriteRegStr HKLM "Software\Classes\AppUserModelId\${PRODUCT_APP_ID}" "IconUri" "$INSTDIR\icon.png"
     WriteRegStr HKLM "Software\Classes\AppUserModelId\${PRODUCT_APP_ID}" "IconBackgroundColor" "FFDDDDDD"
     
-    CreateShortcut "$SMPROGRAMS\${PRODUCT_NAME}.lnk" "$INSTDIR\pingvin-share.exe" "" "$INSTDIR\icon.png"
+    CreateShortcut "$SMPROGRAMS\${PRODUCT_NAME}.lnk" "$INSTDIR\pingvin-cli.exe" "" "$INSTDIR\icon.png"
     ApplicationID::Set "$SMPROGRAMS\${PRODUCT_NAME}.lnk" "${PRODUCT_APP_ID}"
     Pop $0
     ${IF} $0 = -1
@@ -138,7 +138,7 @@ Section "un.Pingvin Shell Extension" Uninstall
 
     Delete "$SMPROGRAMS\${PRODUCT_NAME}.lnk"
     Delete "$INSTDIR\Uninstall.exe"
-    Delete "$INSTDIR\pingvin-share.exe"
+    Delete "$INSTDIR\pingvin-cli.exe"
     Delete "$INSTDIR\pingvin_share_shell.dll"
     Delete "$INSTDIR\icon.ico"
     Delete "$INSTDIR\icon.png"

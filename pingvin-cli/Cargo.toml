@@ -1,16 +1,14 @@
 [package]
-name = "pingvin-share"
+name = "pingvin-cli"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 anyhow = "1.0.86"
 clap = { version = "4.5.16", features = ["derive"] }
-clipboard-win = "5.4.0"
 futures = "0.3.30"
 log = "0.4.22"
 log4rs = "1.3.0"
-msgbox = "0.7.0"
 obfstr = "0.4.3"
 rand = "0.8.5"
 reqwest = { version = "0.12.7", features = ["json", "stream"] }
@@ -18,11 +16,12 @@ serde = { version = "1.0.209", features = ["derive"] }
 serde_json = "1.0.127"
 tokio = { version = "1.40.0", features = ["full"] }
 tokio-util = { version = "0.7.11", features = ["full"] }
-windows-core = "0.58.0"
 
-[dependencies.windows]
-version = "0.58"
-features = [
+[target.'cfg(windows)'.dependencies]
+clipboard-win = "5.4.0"
+msgbox = "0.7.0"
+windows-core = "0.58.0"
+windows = { version = "0.58", features = [
     "implement",
     "Win32_System_Com",
     "Win32_System_SystemServices",
@@ -32,7 +31,7 @@ features = [
     "Data_Xml_Dom",
     "UI_Notifications",
     "Foundation_Collections",
-]
+] }
 
 [build-dependencies]
 winresource = "0.1.17"

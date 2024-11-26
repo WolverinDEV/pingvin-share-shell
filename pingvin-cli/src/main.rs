@@ -1,14 +1,11 @@
-#![windows_subsystem = "windows"]
+#![cfg_attr(target_family = "windows", windows_subsystem = "windows")]
 
+use anyhow::Context;
 use api::{ExpireDuration, PingvinApi};
 use clap::Parser;
-use msgbox::IconType;
-use obfstr::obfwide;
-use output::{create_log_upload_event_handler, create_win_upload_event_handler};
+use output::{AppOutput, OutputType};
 use reqwest::Url;
 use std::{path::PathBuf, process::ExitCode};
-use windows::Win32::UI::Shell::SetCurrentProcessExplicitAppUserModelID;
-use windows_core::PCWSTR;
 
 mod api;
 mod logger;
@@ -44,13 +41,15 @@ pub struct Args {
     #[arg(short, long, verbatim_doc_comment)]
     pub expire_duration: Option<ExpireDuration>,
 
-    #[arg(short, long)]
-    pub console: bool,
+    /// Change the output type on how process indication will be done
+    #[arg(short, long, value_enum, default_value_t = OutputType::Console)]
+    pub output: OutputType,
 }
 
 #[tokio::main]
 async fn main() -> anyhow::Result<ExitCode> {
     logger::init()?;
+
     let args = match Args::try_parse() {
         Ok(args) => args,
         Err(err) => {
@@ -59,37 +58,27 @@ async fn main() -> anyhow::Result<ExitCode> {
         }
     };
 
-    if args.console {
-        unsafe { logger::create_console()? };
-    }
-
-    unsafe {
-        SetCurrentProcessExplicitAppUserModelID(PCWSTR::from_raw(
-            obfwide!("dev.wolveringer.pingvin-share-shell\0").as_ptr(),
-        ))?;
-    }
-    let result = execute_upload(&args).await;
+    let output = output::create(args.output)?;
+    let result = execute_upload(&args, &*output).await;
     if let Err(err) = result {
-        if args.console {
-            return Err(err);
-        }
+        output.show_upload_error(&err);
 
-        let _ = msgbox::create(
-            "Pingvin Share",
-            &format!("Failed to upload files:\n{:#}", err),
-            IconType::Error,
-        );
+        return match args.output {
+            OutputType::Console => Ok(ExitCode::FAILURE),
 
-        /* Return success, so the context menu handler does not show an additional popup */
-        return Ok(ExitCode::SUCCESS);
+            /* Return success, so the context menu handler does not show an additional popup */
+            OutputType::WindowsNotification => Ok(ExitCode::SUCCESS),
+        };
     }
 
     Ok(ExitCode::SUCCESS)
 }
 
-async fn execute_upload(args: &Args) -> anyhow::Result<()> {
+async fn execute_upload(args: &Args, output: &dyn AppOutput) -> anyhow::Result<()> {
     let mut server_api = PingvinApi::new(args.server_url.clone())?;
-    let server_config = server_api.public_config().await?;
+
+    log::info!("Fetching server config");
+    let server_config = server_api.public_config().await.context("server config")?;
 
     let allow_unauthenticated_shares = server_config
         .get_bool("share.allowUnauthenticatedShares")
@@ -98,14 +87,14 @@ async fn execute_upload(args: &Args) -> anyhow::Result<()> {
     if !allow_unauthenticated_shares || !args.server_url.username().is_empty() {
         let username = args.server_url.username();
         let Some(password) = args.server_url.password() else {
-            anyhow::bail!("Unauthenticated shares are not allowed. Please provide a user and a password within the server URL");
+            anyhow::bail!("Unauthenticated shares are not allowed.\nPlease provide a user and a password within the server URL");
         };
 
         if username.is_empty() {
-            anyhow::bail!("Unauthenticated shares are not allowed. Please provide a user and a password within the server URL");
+            anyhow::bail!("Unauthenticated shares are not allowed.\nPlease provide a user and a password within the server URL");
         }
 
-        log::info!("Logging into share");
+        log::info!("Try to login with given credentials.");
         if !server_api.login(username, password).await? {
             anyhow::bail!("Failed to login with the given credentials.");
         }
@@ -125,11 +114,7 @@ async fn execute_upload(args: &Args) -> anyhow::Result<()> {
         share_builder.add_file(file.to_owned());
     }
 
-    if args.console {
-        share_builder.with_callback(create_log_upload_event_handler(&server_config));
-    } else {
-        share_builder.with_callback(create_win_upload_event_handler(&server_config)?);
-    }
+    share_builder.with_callback(output.create_upload_handler(&server_config)?);
 
     let _ = share_builder.upload().await?;
     Ok(())

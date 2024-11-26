@@ -1,4 +1,4 @@
 [workspace]
-members = ["windows-shell", "windows-shell/sparse", "pingvin-share"]
+members = ["windows-shell", "windows-shell/sparse", "pingvin-cli"]
 exclude = ["installer/plugins/pingvin"]
 resolver = "2"

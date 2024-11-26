@@ -1,6 +1,8 @@
 use std::sync::{Arc, Mutex};
 
 use anyhow::Context;
+use msgbox::IconType;
+use obfstr::obfwide;
 use windows::{
     Data::Xml::Dom::XmlDocument,
     Foundation::Collections::IMap,
@@ -12,6 +14,8 @@ use windows::{
 use windows_core::HSTRING;
 
 use crate::api::{PublicConfiguration, UploadEvent, UploadEventCallback};
+
+use super::AppOutput;
 
 struct ProgressNotification {
     notifier: Arc<ToastNotifier>,
@@ -154,89 +158,116 @@ fn show_completion_popup(
     Ok(())
 }
 
-pub fn create_win_upload_event_handler(
-    server_config: &PublicConfiguration,
-) -> anyhow::Result<Box<UploadEventCallback>> {
-    let app_url = server_config
-        .get_string("general.appUrl")
-        .unwrap_or("")
-        .to_string();
+struct WinNotificationAppOutput {}
 
-    let notifier = Arc::new(
-        Err(())
-            .or_else(|_| ToastNotificationManager::CreateToastNotifier())
-            .or_else(|_| {
-                ToastNotificationManager::CreateToastNotifierWithId(&HSTRING::from(
-                    "dev.wolveringer.pingvin-share-shell",
-                ))
-            })
-            .or_else(|_| {
-                ToastNotificationManager::CreateToastNotifierWithId(
+impl AppOutput for WinNotificationAppOutput {
+    fn show_upload_error(&self, error: &anyhow::Error) {
+        let _ = msgbox::create(
+            "Pingvin Share",
+            &format!("Failed to upload files:\n{:#}", error),
+            IconType::Error,
+        );
+    }
+
+    fn create_upload_handler(
+        &self,
+        server_config: &PublicConfiguration,
+    ) -> anyhow::Result<Box<UploadEventCallback>> {
+        let app_url = server_config
+            .get_string("general.appUrl")
+            .unwrap_or("")
+            .to_string();
+
+        let notifier = Arc::new(
+            Err(())
+                .or_else(|_| ToastNotificationManager::CreateToastNotifier())
+                .or_else(|_| {
+                    ToastNotificationManager::CreateToastNotifierWithId(&HSTRING::from(
+                        "dev.wolveringer.pingvin-share-shell",
+                    ))
+                })
+                .or_else(|_| {
+                    ToastNotificationManager::CreateToastNotifierWithId(
                 &HSTRING::from(
             "{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe",
         ))
-            })
-            .context("notifier")?,
-    );
-    let mut progress_notification = ProgressNotification::new(notifier.clone(), "upload-progress")?;
-    progress_notification.set_status("Initializing upload...")?;
-    progress_notification.set_progress(0.0, "")?;
-    progress_notification.show()?;
+                })
+                .context("notifier")?,
+        );
+        let mut progress_notification =
+            ProgressNotification::new(notifier.clone(), "upload-progress")?;
+        progress_notification.set_status("Initializing upload...")?;
+        progress_notification.set_progress(0.0, "")?;
+        progress_notification.show()?;
 
-    let handler = Mutex::new({
-        let mut share_url = None;
-        move |event| -> anyhow::Result<()> {
-            match event {
-                UploadEvent::ShareCreated { share_id } => {
-                    share_url = Some(format!("{}/s/{}", app_url, share_id));
-                    log::info!("Share has been created: {}", share_url.as_ref().unwrap());
-                    progress_notification.set_status("Uploading...")?;
-                }
-                UploadEvent::ShareCompleted => {
-                    log::info!("Upload completed");
-                    progress_notification.set_progress(1.0, "")?;
-                    progress_notification.set_status("Files uploaded")?;
-                    progress_notification.hide()?;
+        let handler = Mutex::new({
+            let mut share_url = None;
+            move |event| -> anyhow::Result<()> {
+                match event {
+                    UploadEvent::ShareCreated { share_id } => {
+                        share_url = Some(format!("{}/s/{}", app_url, share_id));
+                        log::info!("Share has been created: {}", share_url.as_ref().unwrap());
+                        progress_notification.set_status("Uploading...")?;
+                    }
+                    UploadEvent::ShareCompleted => {
+                        log::info!("Upload completed");
+                        progress_notification.set_progress(1.0, "")?;
+                        progress_notification.set_status("Files uploaded")?;
+                        progress_notification.hide()?;
 
-                    let share_url = share_url.as_ref().map(String::as_str).unwrap_or("");
-                    show_completion_popup(
-                        &*notifier,
-                        &progress_notification.notification.Tag()?.to_string_lossy(),
-                        share_url,
-                    )?;
-                    if let Err(err) = clipboard_win::set_clipboard_string(&share_url) {
-                        log::warn!("Failed to copy URL to clipboard: {}", err);
-                    } else {
-                        log::info!("URL copied to clipboard");
+                        let share_url = share_url.as_ref().map(String::as_str).unwrap_or("");
+                        show_completion_popup(
+                            &*notifier,
+                            &progress_notification.notification.Tag()?.to_string_lossy(),
+                            share_url,
+                        )?;
+                        if let Err(err) = clipboard_win::set_clipboard_string(&share_url) {
+                            log::warn!("Failed to copy URL to clipboard: {}", err);
+                        } else {
+                            log::info!("URL copied to clipboard");
+                        }
+                    }
+                    UploadEvent::UploadError { file, error } => {
+                        log::error!("Failed to upload {}: {}", file.display(), error);
+                    }
+                    UploadEvent::UploadProgress(progress) => {
+                        let files_done = progress.files_failed + progress.files_uploaded;
+                        let file_done =
+                            progress.file_bytes_uploaded as f32 / progress.file_length as f32;
+
+                        progress_notification.set_status(&format!(
+                            "Uploading ({}/{})",
+                            files_done, progress.files_total,
+                        ))?;
+                        progress_notification.set_progress(
+                            (files_done as f32 + file_done) / progress.files_total as f32,
+                            &format!(
+                                "{}/{} bytes",
+                                progress.file_bytes_uploaded, progress.file_length
+                            ),
+                        )?;
                     }
                 }
-                UploadEvent::UploadError { file, error } => {
-                    log::error!("Failed to upload {}: {}", file.display(), error);
-                }
-                UploadEvent::UploadProgress(progress) => {
-                    let files_done = progress.files_failed + progress.files_uploaded;
-                    let file_done =
-                        progress.file_bytes_uploaded as f32 / progress.file_length as f32;
-
-                    progress_notification.set_status(&format!(
-                        "Uploading ({}/{})",
-                        files_done, progress.files_total,
-                    ))?;
-                    progress_notification.set_progress(
-                        (files_done as f32 + file_done) / progress.files_total as f32,
-                        &format!(
-                            "{}/{} bytes",
-                            progress.file_bytes_uploaded, progress.file_length
-                        ),
-                    )?;
-                }
+                Ok(())
             }
-            Ok(())
-        }
-    });
-    Ok(Box::new(move |event| {
-        if let Err(err) = (*handler.lock().unwrap())(event) {
-            log::warn!("Failed to process upload event: {}", err);
-        }
-    }))
+        });
+        Ok(Box::new(move |event| {
+            if let Err(err) = (*handler.lock().unwrap())(event) {
+                log::warn!("Failed to process upload event: {}", err);
+            }
+        }))
+    }
+}
+
+pub fn create() -> anyhow::Result<Box<dyn AppOutput>> {
+    unsafe {
+        use windows::Win32::UI::Shell::SetCurrentProcessExplicitAppUserModelID;
+        use windows_core::PCWSTR;
+
+        SetCurrentProcessExplicitAppUserModelID(PCWSTR::from_raw(
+            obfwide!("dev.wolveringer.pingvin-share-shell\0").as_ptr(),
+        ))?;
+    };
+
+    Ok(Box::new(WinNotificationAppOutput {}))
 }

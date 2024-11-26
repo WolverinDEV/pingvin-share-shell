@@ -2,9 +2,9 @@ name: Rust
 
 on:
   push:
-    branches: ["master"]
+    branches: ['master']
   pull_request:
-    branches: ["master"]
+    branches: ['master']
 
 env:
   CARGO_TERM_COLOR: always
@@ -51,10 +51,28 @@ jobs:
           path: |
             installer/plugins/pingvin/target/i686-pc-windows-msvc/release/nsis_pingvin.dll
 
-  build-pingvin:
-    name: Pingvin
-    runs-on: windows-latest
+  build-pingvin-cli:
+    name: Pingvin (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+
     needs: [rust-check]
+    strategy:
+      matrix:
+        name: [linux, windows]
+        include:
+          - name: linux
+            os: ubuntu-20.04
+            # https://github.com/clap-rs/clap/issues/1938#issuecomment-632186396
+            flags: ''
+            artifacts: |
+              target/release/pingvin-cli
+
+          - name: windows
+            os: windows-latest
+            flags: -Ctarget-feature=+crt-static
+            artifacts: |
+              target/release/pingvin-cli.exe
+              target/release/pingvin_cli.pdb
 
     steps:
       - name: Install toolchain
@@ -68,16 +86,14 @@ jobs:
         with:
           cache-on-failure: true
       - name: Build CLI tool
-        run: cargo build --verbose --release --bin pingvin-share
+        run: cargo build --verbose --release --bin pingvin-cli
         env:
-          RUSTFLAGS: -Ctarget-feature=+crt-static
+          RUSTFLAGS: ${{ matrix.flags }}
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: pingvin
-          path: |
-            target/release/pingvin-share.exe
-            target/release/pingvin_share.pdb
+          name: pingvin-cli-${{ matrix.name }}
+          path: ${{ matrix.artifacts }}
 
   build-shell-extension:
     name: Shell extension
@@ -106,11 +122,11 @@ jobs:
           path: |
             target/release/pingvin_share_shell.dll
             target/release/pingvin_share_shell.pdb
-    
+
   create-installer:
     runs-on: windows-latest
     name: Create Installer
-    needs: [build-pingvin, build-shell-extension, build-nsis-plugin]
+    needs: [build-pingvin-cli, build-shell-extension, build-nsis-plugin]
 
     steps:
       - uses: actions/checkout@v4
@@ -129,7 +145,7 @@ jobs:
       - name: Download Pingvin
         uses: actions/download-artifact@v4
         with:
-          name: pingvin
+          name: pingvin-cli-windows
           path: installer/files/
       - name: List files
         shell: bash
@@ -148,7 +164,7 @@ jobs:
       - name: Create installer
         run: |
           cd installer
-          makensis /DPINGVIN_EXE_PATH="$(pwd)\files\pingvin-share.exe" /DPINGVIN_SHELL_EXTENSION_PATH="$(pwd)\files\pingvin_share_shell.dll" installer.nsi
+          makensis /DPINGVIN_CLI_EXE_PATH="$(pwd)\files\pingvin-cli.exe" /DPINGVIN_SHELL_EXTENSION_PATH="$(pwd)\files\pingvin_share_shell.dll" installer.nsi
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
